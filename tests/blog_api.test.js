@@ -9,7 +9,7 @@ test('blogs are returned as json', async () => {
     .expect('Content-Type', /application\/json/)
 })
 
-test('post should respond 201 if post succeeds', () => {
+test('post should respond 201 if post succeeds', async () => {
   const newBlog = {
     title: 'Test are great, and here is why!',
     author: 'Senior dev',
@@ -17,7 +17,7 @@ test('post should respond 201 if post succeeds', () => {
     likes: '0'
   }
 
-  return api
+  await api
     .post('/api/blogs')
     .send(newBlog)
     .expect(201)
