@@ -28,7 +28,7 @@ describe('when some blogs already exist', async () => {
     })
   })
 
-  test.skip('individual blogs are returned as json by GET /api/blogs/:id', async () => {
+  test('individual blogs are returned as json by GET /api/blogs/:id', async () => {
     const blogsInDatabase = await blogsInDb()
     const aBlog = blogsInDatabase[0]
 
@@ -40,7 +40,7 @@ describe('when some blogs already exist', async () => {
     expect(response.body.title).toBe(aBlog.title)
   })
 
-  test.skip('404 returned by GET /api/blogs/:id with nonExisting valid id', async () => {
+  test('404 returned by GET /api/blogs/:id with nonExisting valid id', async () => {
     const validNonexistingId = await nonExistingId()
 
     await api
@@ -48,7 +48,7 @@ describe('when some blogs already exist', async () => {
       .expect(404)
   })
 
-  test.skip('400 is returned by GET /api/blogs/:id with invalid id', async () => {
+  test('400 is returned by GET /api/blogs/:id with invalid id', async () => {
     const invalidId = '5a3d5da5826492910ja7d8asaw'
 
     await api
@@ -136,7 +136,7 @@ describe('when some blogs already exist', async () => {
       await addedBlog.save()
     })
 
-    test('DELETE /api/blogs/:id suceeds with proper statuscode', async () => {
+    test('DELETE /api/blogs/:id succeeds with proper statuscode', async () => {
       const blogsAtStart = await blogsInDb()
 
       await api
@@ -149,6 +149,26 @@ describe('when some blogs already exist', async () => {
 
       expect(titles).not.toContain(addedBlog.title)
       expect(blogsAfterOperation.length).toBe(blogsAtStart.length - 1)
+    })
+  })
+
+  describe('modification of a blog', async () => {
+    test('PUT /api/blogs/:id succeeds with proper statuscode', async () => {
+      const blogsAtStart = await blogsInDb()
+
+      const aBlog = { ...blogsAtStart[0] }
+      aBlog['likes'] = aBlog['likes'] + 1
+
+      await api
+        .put(`/api/blogs/${aBlog.id}`)
+        .send(aBlog)
+        .expect(200)
+        .expect('Content-Type', /application\/json/)
+
+      const blogsAfterOperation = await blogsInDb()
+
+      expect(blogsAfterOperation.length).toBe(blogsAtStart.length)
+      expect(blogsAfterOperation[0].likes).toBe(blogsAtStart[0].likes + 1)
     })
   })
 })
