@@ -4,61 +4,152 @@ const api = supertest(app)
 const Blog = require('../models/blog')
 const { initialBlogs, blogsInDb, nonExistingId } = require('./test_helper')
 
-const newBlog = {
-  title: 'Test are great, and here is why!',
-  author: 'Senior dev',
-  url: 'http://...',
-  likes: 0
-}
+describe('when some blogs already exist', async () => {
+  beforeAll(async () => {
+    await Blog.remove({})
 
-const noLikesBlog = {
-  title: 'Test are great, and here is why!',
-  author: 'Senior dev',
-  url: 'http://...',
-  likes: ''
-}
+    const blogObjects = initialBlogs.map(b => new Blog(b))
+    await Promise.all(blogObjects.map(b => b.save()))
+  })
 
-const titleLessBlog = {
-  author: 'Senior dev',
-  likes: 2
-}
+  test('all blogs are returned as json by GET /api/blogs', async () => {
+    const blogsInDatabase = await blogsInDb()
 
-beforeAll(async () => {
-  await Blog.remove({})
-
-  for (let blog of initialBlogs) {
-    let blogObject = new Blog(blog)
-    await blogObject.save()
-  }
-
-})
-
-describe('blog tests', () => {
-  test('blogs are returned as json', async () => {
-    await api
+    const response = await api
       .get('/api/blogs')
       .expect(200)
       .expect('Content-Type', /application\/json/)
+
+    expect(response.body.length).toBe(blogsInDatabase.length)
+
+    const returnedTitles = response.body.map(b => b.title)
+    blogsInDatabase.forEach(blog => {
+      expect(returnedTitles).toContain(blog.title)
+    })
   })
 
-  test('post should respond 201 if post succeeds', async () => {
-    await api
-      .post('/api/blogs')
-      .send(newBlog)
-      .expect(201)
+  test.skip('individual blogs are returned as json by GET /api/blogs/:id', async () => {
+    const blogsInDatabase = await blogsInDb()
+    const aBlog = blogsInDatabase[0]
+
+    const response = await api
+      .get(`/api/blogs/${aBlog.id}`)
+      .expect(200)
       .expect('Content-Type', /application\/json/)
+
+    expect(response.body.title).toBe(aBlog.title)
   })
 
-  test('post body with no likes value -> set likes: 0', async () => {
-    const response = await api.post('/api/blogs').send(noLikesBlog)
+  test.skip('404 returned by GET /api/blogs/:id with nonExisting valid id', async () => {
+    const validNonexistingId = await nonExistingId()
 
-    expect(response.body.likes).toBe(0)
+    await api
+      .get(`/api/blogs/${validNonexistingId}`)
+      .expect(404)
   })
 
-  test('creating blog without title or url gives bad request', async () => {
-    const response = await api.post('/api/blogs').send(titleLessBlog)
+  test.skip('400 is returned by GET /api/blogs/:id with invalid id', async () => {
+    const invalidId = '5a3d5da5826492910ja7d8asaw'
 
-    expect(response.status).toBe(400)
+    await api
+      .get(`/api/blogs/${invalidId}`)
+      .expect(400)
+  })
+
+  describe('addition of a new blog', async () => {
+    test('POST /api/blogs succeeds with valid data', async () => {
+      const blogsAtStart = await blogsInDb()
+
+      const newBlog = {
+        title: 'Test are great, and here is why!',
+        author: 'Senior dev',
+        url: 'http://...',
+        likes: 5
+      }
+
+      await api
+        .post('/api/blogs')
+        .send(newBlog)
+        .expect(201)
+        .expect('Content-Type', /application\/json/)
+
+      const blogsAfterOperation = await blogsInDb()
+
+      expect(blogsAfterOperation.length).toBe(blogsAtStart.length + 1)
+
+      const titles = blogsAfterOperation.map(b => b.title)
+      expect(titles).toContain('Test are great, and here is why!')
+    })
+
+    test('POST /api/blogs fails with proper statuscode if title or url is missing', async () => {
+      const newBlog = {
+        author: 'Takashiro Hishashi',
+        likes: 12
+      }
+
+      const blogsAtStart = await blogsInDb()
+
+      await api
+        .post('/api/blogs')
+        .send(newBlog)
+        .expect(400)
+
+      const blogsAfterOperation = await blogsInDb()
+
+      expect(blogsAfterOperation.length).toBe(blogsAtStart.length)
+    })
+
+    test('POST /api/blogs will initialize likes value as 1 if the field is given no value', async () => {
+      const newBlog = {
+        title: 'Code is great, and here is why!',
+        author: 'Senior dev',
+        url: 'http://...',
+        likes: ''
+      }
+
+      const blogsAtStart = await blogsInDb()
+
+      await api
+        .post('/api/blogs')
+        .send(newBlog)
+        .expect(201)
+        .expect('Content-Type', /application\/json/)
+
+      const blogsAfterOperation = await blogsInDb()
+
+      expect(blogsAfterOperation.length).toBe(blogsAtStart.length + 1)
+      const addedBlog = blogsAfterOperation.find(b => b.title === 'Code is great, and here is why!')
+      expect(addedBlog.likes).toBe(0)
+    })
+  })
+
+  describe('deletion of a blog', async () => {
+    let addedBlog
+
+    beforeAll(async () => {
+      addedBlog = new Blog({
+        title: 'delete with HTTP DELETE',
+        author: 'anonymous',
+        url: 'unknown',
+        likes: 0
+      })
+      await addedBlog.save()
+    })
+
+    test('DELETE /api/blogs/:id suceeds with proper statuscode', async () => {
+      const blogsAtStart = await blogsInDb()
+
+      await api
+        .delete(`/api/blogs/${addedBlog._id}`)
+        .expect(204)
+
+      const blogsAfterOperation = await blogsInDb()
+
+      const titles = blogsAfterOperation.map(b => b.title)
+
+      expect(titles).not.toContain(addedBlog.title)
+      expect(blogsAfterOperation.length).toBe(blogsAtStart.length - 1)
+    })
   })
 })
 

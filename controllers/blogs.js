@@ -6,33 +6,35 @@ blogsRouter.get('/', async (request, response) => {
   response.json(blogs.map(Blog.format))
 })
 
-blogsRouter.post('/', (request, response) => {
+blogsRouter.post('/', async (request, response) => {
   const body = request.body
+  const res = await Blog.find({ name: body.title })
 
-  Blog
-    .find({ name: body.title })
-    .then(res => {
-      if (!body.title) {
-        return response.status(400).send({ error: 'no title' })
-      } else if (!body.url) {
-        return response.status(400).send({ error: 'no url' })
-      } else if (0 < res.length) {
-        return res.status(400).send({ error: 'blog already exists' })
-      } else {
-        if (!body.likes) {
-          console.log('no likes')
-          body.likes = 0
-        }
+  if (!body.title) {
+    return response.status(400).send({ error: 'no title' })
+  } else if (!body.url) {
+    return response.status(400).send({ error: 'no url' })
+  } else if (0 < res.length) {
+    return response.status(400).send({ error: 'blog already exists' })
+  } else {
 
-        const blog = new Blog(body)
-        blog
-          .save()
-          .then(result => {
-            response.status(201).json(result)
-          })
-      }
+    if (!body.likes) {
+      body.likes = 0
+    }
 
-    })
+    const blog = new Blog(body)
+    await blog.save()
+    response.status(201).json(Blog.format(blog))
+  }
+})
+
+
+
+blogsRouter.delete('/:id', async (request, response) => {
+  const id = request.params.id
+
+  await Blog.findByIdAndRemove(id)
+  response.status(204).end()
 })
 
 module.exports = blogsRouter
