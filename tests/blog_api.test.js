@@ -2,7 +2,8 @@ const supertest = require('supertest')
 const { app, server } = require('../index')
 const api = supertest(app)
 const Blog = require('../models/blog')
-const { initialBlogs, blogsInDb, nonExistingId } = require('./test_helper')
+const User = require('../models/user')
+const { initialBlogs, blogsInDb, usersInDb, nonExistingId } = require('./test_helper')
 
 describe('when some blogs already exist', async () => {
   beforeAll(async () => {
@@ -63,7 +64,7 @@ describe('when some blogs already exist', async () => {
       const newBlog = {
         title: 'Test are great, and here is why!',
         author: 'Senior dev',
-        url: 'http://...',
+        url: 'http://...1',
         likes: 5
       }
 
@@ -103,7 +104,7 @@ describe('when some blogs already exist', async () => {
       const newBlog = {
         title: 'Code is great, and here is why!',
         author: 'Senior dev',
-        url: 'http://...',
+        url: 'http://...2',
         likes: ''
       }
 
@@ -170,6 +171,57 @@ describe('when some blogs already exist', async () => {
       expect(blogsAfterOperation.length).toBe(blogsAtStart.length)
       expect(blogsAfterOperation[0].likes).toBe(blogsAtStart[0].likes + 1)
     })
+  })
+})
+
+describe.only('when one user already exists in db', async () => {
+  beforeAll(async () => {
+    await User.remove({})
+    const user = new User({ username: 'tester', password: 'sekret' })
+    await user.save()
+  })
+
+  test('POST /api/users succeeds with a unique username', async () => {
+    const usersBefore = await usersInDb()
+
+    const newUser = {
+      username: 'stadibo',
+      name: 'Jesper Pettersson',
+      adult: true,
+      password: 'ridleyorion'
+    }
+
+    await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+
+    const usersAfter = await usersInDb()
+    expect(usersAfter.length).toBe(usersBefore.length + 1)
+    const usernames = usersAfter.map(u => u.username)
+    expect(usernames).toContain(newUser.username)
+  })
+
+  test('POST /api/users fails with proper statuscode and message if username already taken', async () => {
+    const usersBefore = await usersInDb()
+
+    const newUser = {
+      username: 'tester',
+      name: 'Superuser',
+      password: 'hemlighet'
+    }
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+
+    expect(result.body).toEqual({ error: 'username must be unique' })
+
+    const usersAfter = await usersInDb()
+    expect(usersAfter.length).toBe(usersBefore.length)
   })
 })
 

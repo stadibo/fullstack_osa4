@@ -1,0 +1,40 @@
+const supertest = require('supertest')
+const { app, server } = require('../index')
+const api = supertest(app)
+const Blog = require('../models/blog')
+const User = require('../models/user')
+const { initialBlogs, blogsInDb, usersInDb, nonExistingId } = require('./test_helper')
+
+describe('when one user already exists in db', async () => {
+  beforeAll(async () => {
+    await User.remove({})
+    const user = new User({ username: 'tester', password: 'sekret' })
+    await user.save()
+  })
+
+  test('POST /api/users succeeds with a unique username', async () => {
+    const usersBefore = await usersInDb()
+
+    const newUser = {
+      username: 'stadibo',
+      name: 'Jesper Pettersson',
+      adult: true,
+      password: 'ridleyorion'
+    }
+
+    await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+
+    const usersAfter = await usersInDb()
+    expect(usersAfter.length).toBe(usersBefore.length + 1)
+    const usernames = usersAfter.map(u => u.username)
+    expect(usernames).toContain(newUser.username)
+  })
+})
+
+afterAll(() => {
+  server.close()
+})

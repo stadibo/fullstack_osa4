@@ -30,7 +30,7 @@ blogsRouter.get('/:id', async (request, response) => {
 blogsRouter.post('/', async (request, response) => {
   try {
     const body = request.body
-    const res = await Blog.find({ name: body.title })
+    const res = await Blog.find({ url: body.url })
 
     if (!body.title) {
       return response.status(400).send({ error: 'no title' })
@@ -63,7 +63,8 @@ blogsRouter.put('/:id', async (request, response) => {
       title: body.title,
       author: body.author,
       url: body.url,
-      likes: body.likes
+      likes: body.likes,
+      user: body.user
     }
 
     const modifiedBlog = await Blog.findByIdAndUpdate(id, blog, { new: true })
