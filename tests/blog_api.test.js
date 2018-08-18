@@ -174,7 +174,7 @@ describe('when some blogs already exist', async () => {
   })
 })
 
-describe.only('when one user already exists in db', async () => {
+describe('when one user already exists in db', async () => {
   beforeAll(async () => {
     await User.remove({})
     const user = new User({ username: 'tester', password: 'sekret' })
@@ -222,6 +222,51 @@ describe.only('when one user already exists in db', async () => {
 
     const usersAfter = await usersInDb()
     expect(usersAfter.length).toBe(usersBefore.length)
+  })
+
+  test('POST /api/users fails with proper statuscode and message if username is too short', async () => {
+    const usersBefore = await usersInDb()
+
+    const newUser = {
+      username: 'dumbTester',
+      name: 'Superuser',
+      password: 'mo'
+    }
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/)
+
+    expect(result.body).toEqual({ error: 'password is too short' })
+
+    const usersAfter = await usersInDb()
+    expect(usersAfter.length).toBe(usersBefore.length)
+  })
+
+  test('POST /api/users without value for adult will initialize to adult -> true', async () => {
+    const usersBefore = await usersInDb()
+
+    const newUser = {
+      username: 'someTester',
+      name: 'Superman',
+      password: 'morjensta'
+    }
+
+    const result = await api
+      .post('/api/users')
+      .send(newUser)
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+
+    const usersAfter = await usersInDb()
+    expect(usersAfter.length).toBe(usersBefore.length + 1)
+    
+    const usernames = usersAfter.map(u => u.username)
+    expect(usernames).toContain(newUser.username)
+    
+    expect(usersAfter.find(u => u.username === newUser.username).adult).toBe(true)
   })
 })
 

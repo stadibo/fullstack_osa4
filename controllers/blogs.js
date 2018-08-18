@@ -1,5 +1,6 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
+const User = require('../models/user')
 
 blogsRouter.get('/', async (request, response) => {
   try {
@@ -40,11 +41,19 @@ blogsRouter.post('/', async (request, response) => {
       return response.status(400).send({ error: 'blog already exists' })
     } else {
 
-      if (!body.likes) {
-        body.likes = 0
-      }
+      // if (!body.likes) {
+      //   body.likes = 0
+      // }
 
-      const blog = new Blog(body)
+      //const user = await User.findById(body.user)
+
+      const blog = new Blog({
+        title: body.title,
+        author: body.author,
+        url: body.url,
+        likes: body.likes ? body.likes : 0
+        //user: user._id
+      })
       await blog.save()
       response.status(201).json(Blog.format(blog))
     }
