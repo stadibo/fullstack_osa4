@@ -71,7 +71,7 @@ describe('when some blogs already exist', async () => {
       await api
         .post('/api/blogs')
         .send(newBlog)
-        .expect(201)
+        .expect(200)
         .expect('Content-Type', /application\/json/)
 
       const blogsAfterOperation = await blogsInDb()
@@ -113,7 +113,7 @@ describe('when some blogs already exist', async () => {
       await api
         .post('/api/blogs')
         .send(newBlog)
-        .expect(201)
+        .expect(200)
         .expect('Content-Type', /application\/json/)
 
       const blogsAfterOperation = await blogsInDb()
@@ -254,7 +254,7 @@ describe('when one user already exists in db', async () => {
       password: 'morjensta'
     }
 
-    const result = await api
+    await api
       .post('/api/users')
       .send(newUser)
       .expect(200)
@@ -262,10 +262,10 @@ describe('when one user already exists in db', async () => {
 
     const usersAfter = await usersInDb()
     expect(usersAfter.length).toBe(usersBefore.length + 1)
-    
+
     const usernames = usersAfter.map(u => u.username)
     expect(usernames).toContain(newUser.username)
-    
+
     expect(usersAfter.find(u => u.username === newUser.username).adult).toBe(true)
   })
 })

@@ -4,7 +4,14 @@ const User = require('../models/user')
 
 blogsRouter.get('/', async (request, response) => {
   try {
-    const blogs = await Blog.find({})
+    const blogs = await Blog
+      .find({})
+      .populate('user', {
+        _id: 1,
+        username: 1,
+        name: 1
+      })
+
     response.json(blogs.map(Blog.format))
   } catch (e) {
     console.log(e)
@@ -41,21 +48,25 @@ blogsRouter.post('/', async (request, response) => {
       return response.status(400).send({ error: 'blog already exists' })
     } else {
 
-      // if (!body.likes) {
-      //   body.likes = 0
-      // }
-
       //const user = await User.findById(body.user)
+
+      const users = await User.find({}) //temporary solution
+      const user = users[0]
 
       const blog = new Blog({
         title: body.title,
         author: body.author,
         url: body.url,
-        likes: body.likes ? body.likes : 0
-        //user: user._id
+        likes: body.likes ? body.likes : 0,
+        user: user._id
       })
-      await blog.save()
-      response.status(201).json(Blog.format(blog))
+
+      const savedBlog = await blog.save()
+
+      user.blogs = user.blogs.concat(savedBlog._id)
+      await user.save()
+
+      response.json(Blog.format(blog))
     }
   } catch (e) {
     console.log(e)
