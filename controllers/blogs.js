@@ -28,7 +28,14 @@ blogsRouter.get('/:id', async (request, response) => {
       return response.status(400).json({ error: 'invalid id' })
     }
 
-    const blog = await Blog.findById(id)
+    const blog = await Blog
+      .findById(id)
+      .populate('user', {
+        _id: 1,
+        username: 1,
+        name: 1
+      })
+
     response.json(Blog.format(blog))
   } catch (e) {
     console.log(e)
