@@ -88,19 +88,38 @@ blogsRouter.put('/:id', async (request, response) => {
     const body = request.body
     const id = request.params.id
 
+    const token = request.token
+    const decodedToken = jwt.verify(token, process.env.SECRET)
+
+    if (!token || !decodedToken.id) {
+      return response.status(401).json({ error: 'token missing or invalid' })
+    }
+
+    const blogToModify = await Blog.findById(id)
+
     const blog = {
       title: body.title,
       author: body.author,
       url: body.url,
       likes: body.likes,
-      user: body.user
+      user: decodedToken.id //might cause trouble, replace with body.user if error
     }
 
-    const modifiedBlog = await Blog.findByIdAndUpdate(id, blog, { new: true })
-    response.json(Blog.format(modifiedBlog))
+    if (blogToModify.user.toString() === decodedToken.id.toString()) {
+      const modifiedBlog = await Blog.findByIdAndUpdate(id, blog, { new: true })
+      response.json(Blog.format(modifiedBlog))
+    } else {
+      response.status(401).json({ error: 'user lacks permission to modify' })
+    }
+
+
   } catch (e) {
-    console.log(e)
-    response.status(500).json({ error: 'something went wrong...' })
+    if (e.name === 'JsonWebTokenError') {
+      response.status(401).json({ error: e.message })
+    } else {
+      console.log(e)
+      response.status(500).json({ error: 'something went wrong...' })
+    }
   }
 })
 
@@ -115,12 +134,12 @@ blogsRouter.delete('/:id', async (request, response) => {
 
     const id = request.params.id
 
-    console.log('start')
-    console.log(id)
+    // console.log('start')
+    // console.log(id)
 
     const blog = await Blog.findById(id)
 
-    console.log(blog)
+    // console.log(blog)
 
     if (blog.user.toString() === decodedToken.id.toString()) {
       await Blog.findByIdAndRemove(id)
