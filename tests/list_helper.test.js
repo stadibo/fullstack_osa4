@@ -12,7 +12,7 @@ const listWithOneBlog = [
   }
 ]
 
-describe('list helpers skip should be removed', () => {
+describe('list helpers', () => {
   describe('total likes', () => {
     test('when list has only one blog equals the likes of that', () => {
       const result = listHelper.totalLikes(listWithOneBlog)
