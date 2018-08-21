@@ -78,7 +78,15 @@ blogsRouter.post('/', async (request, response) => {
       user.blogs = user.blogs.concat(savedBlog._id)
       await user.save()
 
-      response.json(Blog.format(blog))
+      const popBlog = await Blog
+        .findById(savedBlog._id)
+        .populate('user', {
+          _id: 1,
+          username: 1,
+          name: 1
+        })
+
+      response.json(Blog.format(popBlog))
     }
   } catch (e) {
     if (e.name === 'JsonWebTokenError') {
@@ -95,29 +103,44 @@ blogsRouter.put('/:id', async (request, response) => {
     const body = request.body
     const id = request.params.id
 
-    const token = request.token
-    const decodedToken = jwt.verify(token, process.env.SECRET)
+    // const token = request.token
+    // const decodedToken = jwt.verify(token, process.env.SECRET)
 
-    if (!token || !decodedToken.id) {
-      return response.status(401).json({ error: 'token missing or invalid' })
-    }
+    // if (!token || !decodedToken.id) {
+    //   return response.status(401).json({ error: 'token missing or invalid' })
+    // }
 
     const blogToModify = await Blog.findById(id)
 
-    const blog = {
-      title: body.title,
-      author: body.author,
-      url: body.url,
-      likes: body.likes,
-      user: decodedToken.id //might cause trouble, replace with body.user if error
+    if (blogToModify) {
+      const blog = {
+        title: body.title,
+        author: body.author,
+        url: body.url,
+        likes: body.likes,
+        user: body.user
+      }
+
+      const modifiedBlog = await Blog.findByIdAndUpdate(id, blog, { new: true })
+      const popBlog = await Blog
+        .findById(modifiedBlog._id)
+        .populate('user', {
+          _id: 1,
+          username: 1,
+          name: 1
+        })
+
+      response.json(Blog.format(popBlog))
+    } else {
+      response.status(400).json({ error: 'blog does not exist' })
     }
 
-    if (blogToModify.user.toString() === decodedToken.id.toString()) {
-      const modifiedBlog = await Blog.findByIdAndUpdate(id, blog, { new: true })
-      response.json(Blog.format(modifiedBlog))
-    } else {
-      response.status(401).json({ error: 'user lacks permission to modify' })
-    }
+
+    // if (blogToModify.user.toString() === decodedToken.id.toString()) {
+
+    // } else {
+    // response.status(401).json({ error: 'user lacks permission to modify' })
+    // }
 
 
   } catch (e) {
@@ -148,14 +171,19 @@ blogsRouter.delete('/:id', async (request, response) => {
 
     // console.log(blog)
 
-    if (blog.user.toString() === decodedToken.id.toString()) {
+    if (blog.user) {
+      const isValid = blog.user.toString() === decodedToken.id.toString()
+      if (isValid) {
+        await Blog.findByIdAndRemove(id)
+        response.status(204).end()
+      } else {
+        return response.status(401).json({ error: 'user lacks permission to delete' })
+      }
+    } else {
+      //console.log('deleted random')
       await Blog.findByIdAndRemove(id)
       response.status(204).end()
-    } else {
-      response.status(401).json({ error: 'user lacks permission to delete' })
     }
-
-
   } catch (e) {
     if (e.name === 'JsonWebTokenError') {
       response.status(401).json({ error: e.message })
